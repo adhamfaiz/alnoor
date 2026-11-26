@@ -151,9 +151,7 @@ curl -s "http://127.0.0.1:8000/api/invoices?customer=الحميري&page=1&per_p
 
 ## Running the Full Test Suite
 
-```bash
 php artisan test
-```
 
 All 16 tests cover:
 - ✅ 3 valid invoice creation scenarios (Arabic names, multi-item, single-item)
