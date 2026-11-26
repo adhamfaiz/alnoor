@@ -1,0 +1,336 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Al-Noor Grocery (بقالة النور) Invoice API",
+        "description": "REST API to record and manage invoices for Al-Noor Grocery. Totals (subtotal, 15% tax, total) are computed strictly on the server in YER.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/",
+            "description": "Current API Server"
+        }
+    ],
+    "paths": {
+        "/api/invoices": {
+            "get": {
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "List invoices (paginated)",
+                "description": "Returns a paginated list of invoices with optional Arabic/UTF-8 customer name search.",
+                "operationId": "0b8e5b661b472432febe76177e627e86",
+                "parameters": [
+                    {
+                        "name": "customer",
+                        "in": "query",
+                        "description": "Filter invoices by customer name (partial match, supports Arabic)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "الحميري"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Items per page (max 100)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15,
+                            "maximum": 100,
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of invoices",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Invoice"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object"
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Create a new invoice",
+                "description": "Creates an invoice and its line items inside a database transaction. Server calculates subtotal, 15% tax, and total in YER; any client-supplied totals are ignored.",
+                "operationId": "9a379bde2decc411b48e2fdc02a315ad",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "customer",
+                                    "items"
+                                ],
+                                "properties": {
+                                    "customer": {
+                                        "type": "string",
+                                        "example": "محمد الحميري",
+                                        "maxLength": 255
+                                    },
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "name",
+                                                "qty",
+                                                "price"
+                                            ],
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "رز بسمتي 10 كيلو",
+                                                    "maxLength": 255
+                                                },
+                                                "qty": {
+                                                    "type": "integer",
+                                                    "example": 1,
+                                                    "minimum": 1
+                                                },
+                                                "price": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 18000,
+                                                    "minimum": 0.01
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "example": [
+                                            {
+                                                "name": "رز بسمتي 10 كيلو",
+                                                "qty": 1,
+                                                "price": 18000
+                                            },
+                                            {
+                                                "name": "سكر 5 كيلو",
+                                                "qty": 2,
+                                                "price": 6500
+                                            }
+                                        ],
+                                        "minItems": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Invoice created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Invoice"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The customer field is required."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invoices/{id}": {
+            "get": {
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Get invoice by ID",
+                "description": "Returns a single invoice with its line items and server-calculated totals.",
+                "operationId": "6f9874ec6f7301133948074ff6108fcb",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Invoice ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invoice found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Invoice"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Invoice not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Invoice not found."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "InvoiceItem": {
+                "title": "InvoiceItem",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "رز بسمتي 10 كيلو"
+                    },
+                    "qty": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 18000
+                    },
+                    "line_total": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 18000
+                    }
+                },
+                "type": "object"
+            },
+            "Invoice": {
+                "title": "Invoice",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "customer": {
+                        "type": "string",
+                        "example": "محمد الحميري"
+                    },
+                    "currency": {
+                        "type": "string",
+                        "example": "YER"
+                    },
+                    "subtotal": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 31000
+                    },
+                    "tax": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 4650
+                    },
+                    "total": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 35650
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/InvoiceItem"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-11-26T12:30:00+00:00"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-11-26T12:30:00+00:00"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Invoices",
+            "description": "Create, retrieve, and search grocery invoices"
+        }
+    ]
+}
