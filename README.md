@@ -147,12 +147,12 @@ curl -s "http://127.0.0.1:8000/api/invoices?customer=الحميري&page=1&per_p
     "last_page": 1
   }
 }
+```
 
-
-## Running the Full Test Suite
-
+Running the Full Test Suite
+```
 php artisan test
-
+```
 All 16 tests cover:
 - ✅ 3 valid invoice creation scenarios (Arabic names, multi-item, single-item)
 - ✅ Client-sent `total` is ignored and server computes the correct value
