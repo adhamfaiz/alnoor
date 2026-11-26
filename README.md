@@ -1,7 +1,6 @@
- بقالة النور – Al-Noor Grocery Invoice API
+Al-Noor Invoice API
 1. Configure environment
 
-cp .env.example .env
 php artisan key:generate
 
 
