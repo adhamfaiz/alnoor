@@ -84,8 +84,17 @@ class InvoiceController extends Controller
     #[OA\Post(
         path: '/api/invoices',
         summary: 'Create a new invoice',
-        description: 'Creates an invoice and its line items inside a database transaction. Server calculates subtotal, 15% tax, and total in YER; any client-supplied totals are ignored.',
+        description: 'Creates an invoice and its line items inside a database transaction. Server calculates subtotal, 15% tax, and total in YER; any client-supplied totals are ignored. Supports X-Idempotency-Key header to prevent duplicate submissions.',
         tags: ['Invoices'],
+        parameters: [
+            new OA\Parameter(
+                name: 'X-Idempotency-Key',
+                in: 'header',
+                description: 'Optional unique key (e.g. UUID v4) to prevent duplicate invoice creation on double-tap or retries',
+                required: false,
+                schema: new OA\Schema(type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000')
+            ),
+        ],
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
@@ -136,8 +145,19 @@ class InvoiceController extends Controller
     )]
     public function store(StoreInvoiceRequest $request)
     {
+        $key = $request->header('X-Idempotency-Key');
+        $key = is_string($key) && trim($key) !== '' ? trim($key) : null;
+
+        if ($key !== null) {
+            $existing = Invoice::where('idempotency_key', $key)->first();
+            if ($existing) {
+                return new InvoiceResource($existing->load('items'));
+            }
+        }
+
         $invoice = $this->invoiceService->create(
             $request->validatedInvoiceData(),
+            $key,
         );
 
         return (new InvoiceResource($invoice))

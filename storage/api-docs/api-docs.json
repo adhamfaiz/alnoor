@@ -87,8 +87,21 @@
                     "Invoices"
                 ],
                 "summary": "Create a new invoice",
-                "description": "Creates an invoice and its line items inside a database transaction. Server calculates subtotal, 15% tax, and total in YER; any client-supplied totals are ignored.",
+                "description": "Creates an invoice and its line items inside a database transaction. Server calculates subtotal, 15% tax, and total in YER; any client-supplied totals are ignored. Supports X-Idempotency-Key header to prevent duplicate submissions.",
                 "operationId": "9a379bde2decc411b48e2fdc02a315ad",
+                "parameters": [
+                    {
+                        "name": "X-Idempotency-Key",
+                        "in": "header",
+                        "description": "Optional unique key (e.g. UUID v4) to prevent duplicate invoice creation on double-tap or retries",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "550e8400-e29b-41d4-a716-446655440000"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -251,10 +264,6 @@
             "InvoiceItem": {
                 "title": "InvoiceItem",
                 "properties": {
-                    "id": {
-                        "type": "integer",
-                        "example": 1
-                    },
                     "name": {
                         "type": "string",
                         "example": "رز بسمتي 10 كيلو"

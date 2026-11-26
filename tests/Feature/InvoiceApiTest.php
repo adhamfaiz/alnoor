@@ -353,4 +353,80 @@ class InvoiceApiTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonCount(0, 'data');
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Idempotency Key (Double-Tap Prevention)
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_duplicate_request_with_same_idempotency_key_returns_original_invoice(): void
+    {
+        $payload = [
+            'customer' => 'محمد الحميري',
+            'items' => [
+                ['name' => 'رز بسمتي 10 كيلو', 'qty' => 1, 'price' => 18000],
+            ],
+        ];
+
+        $key = '550e8400-e29b-41d4-a716-446655440000';
+
+        $first = $this->postJson('/api/invoices', $payload, ['X-Idempotency-Key' => $key]);
+        $first->assertStatus(201);
+        $originalId = $first->json('data.id');
+
+        $second = $this->postJson('/api/invoices', $payload, ['X-Idempotency-Key' => $key]);
+        $second->assertStatus(200)
+            ->assertJsonPath('data.id', $originalId)
+            ->assertJsonPath('data.total', 20700)
+            ->assertJsonCount(1, 'data.items');
+
+        $this->assertDatabaseCount('invoices', 1);
+    }
+
+    public function test_different_idempotency_keys_create_separate_invoices(): void
+    {
+        $payload = [
+            'customer' => 'فاطمة العريقي',
+            'items' => [
+                ['name' => 'شاهي 450 جرام', 'qty' => 3, 'price' => 3100],
+            ],
+        ];
+
+        $this->postJson('/api/invoices', $payload, ['X-Idempotency-Key' => 'key-1'])->assertStatus(201);
+        $this->postJson('/api/invoices', $payload, ['X-Idempotency-Key' => 'key-2'])->assertStatus(201);
+
+        $this->assertDatabaseCount('invoices', 2);
+    }
+
+    public function test_requests_without_idempotency_key_create_separate_invoices(): void
+    {
+        $payload = [
+            'customer' => 'فاطمة العريقي',
+            'items' => [
+                ['name' => 'شاهي 450 جرام', 'qty' => 3, 'price' => 3100],
+            ],
+        ];
+
+        $this->postJson('/api/invoices', $payload)->assertStatus(201);
+        $this->postJson('/api/invoices', $payload)->assertStatus(201);
+
+        $this->assertDatabaseCount('invoices', 2);
+    }
+
+    public function test_service_handles_unique_constraint_race_gracefully(): void
+    {
+        $payload = [
+            'customer' => 'خالد العولقي',
+            'items' => [
+                ['name' => 'حليب نيدو 900 جرام', 'qty' => 1, 'price' => 9800],
+            ],
+        ];
+
+        $service = app(\App\Services\InvoiceService::class);
+
+        $first = $service->create($payload, 'race-key-123');
+        $second = $service->create($payload, 'race-key-123');
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertDatabaseCount('invoices', 1);
+    }
 }
